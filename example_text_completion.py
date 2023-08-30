@@ -20,12 +20,11 @@ def main(
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        watermark = "aaronson"
     )
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
-        "I believe the meaning of life is",
-        "Simply put, the theory of relativity states that ",
         """A brief message congratulating the team on the launch:
 
         Hi everyone,
@@ -45,6 +44,7 @@ def main(
         temperature=temperature,
         top_p=top_p,
         logprobs=True,
+        watermark = "aaronson"
     )
     for prompt, result in zip(prompts, results):
         print(prompt)

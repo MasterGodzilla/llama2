@@ -19,6 +19,9 @@ from fairscale.nn.model_parallel.initialize import (
 from llama.model import ModelArgs, Transformer
 from llama.tokenizer import Tokenizer
 
+#watermark
+from llama.watermark import AaronsonWatermarker
+
 Role = Literal["system", "user", "assistant"]
 
 
@@ -56,6 +59,7 @@ class Llama:
         max_seq_len: int,
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
+        watermark = "aaronson",
     ) -> "Llama":
         if not torch.distributed.is_initialized():
             torch.distributed.init_process_group("nccl")
@@ -96,11 +100,18 @@ class Llama:
         model.load_state_dict(checkpoint, strict=False)
         print(f"Loaded in {time.time() - start_time:.2f} seconds")
 
-        return Llama(model, tokenizer)
+        #Watermark part
+        if watermark == "aaronson":
+            watermarker = AaronsonWatermarker()
+        else:
+            watermarker = None
 
-    def __init__(self, model: Transformer, tokenizer: Tokenizer):
+        return Llama(model, tokenizer, watermarker)
+
+    def __init__(self, model: Transformer, tokenizer: Tokenizer, watermarker = None):
         self.model = model
         self.tokenizer = tokenizer
+        self.watermarker = watermarker
 
     @torch.inference_mode()
     def generate(
@@ -111,6 +122,7 @@ class Llama:
         top_p: float = 0.9,
         logprobs: bool = False,
         echo: bool = False,
+        watermark = None #None, aaronson, kirchenbaurer, cosine
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
         params = self.model.params
         bsz = len(prompt_tokens)
@@ -136,7 +148,11 @@ class Llama:
             
             if temperature > 0:
                 probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
-                next_token = sample_top_p(probs, top_p)
+                if watermark == "aaronson": 
+                    #print ("using aaronson watermark")
+                    next_token = self.watermarker.sample(probs, tokens)
+                else:
+                    next_token = sample_top_p(probs, top_p)
             else:
                 next_token = torch.argmax(logits[:, -1], dim=-1)
 
@@ -179,8 +195,8 @@ class Llama:
                 probs = probs[:eos_idx] if logprobs else None
             out_tokens.append(toks)
             out_logprobs.append(probs)
-        return (out_tokens, out_logprobs if logprobs else None)
-
+        return (out_tokens, out_logprobs if logprobs else None)    
+    
     def text_completion(
         self,
         prompts: List[str],
@@ -189,6 +205,7 @@ class Llama:
         max_gen_len: Optional[int] = None,
         logprobs: bool = False,
         echo: bool = False,
+        watermark = None #None, aaronson, kirchenbaurer, cosine
     ) -> List[CompletionPrediction]:
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
@@ -200,6 +217,7 @@ class Llama:
             top_p=top_p,
             logprobs=logprobs,
             echo=echo,
+            watermark = watermark
         )
         if logprobs:
             return [
