@@ -102,7 +102,10 @@ class Llama:
 
         #Watermark part
         if watermark == "aaronson":
-            watermarker = AaronsonWatermarker()
+            watermarker = AaronsonWatermarker(
+                vocab_size = model_args.vocab_size,
+                tokenizer = tokenizer
+            )
         else:
             watermarker = None
 

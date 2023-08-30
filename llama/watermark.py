@@ -1,10 +1,16 @@
 import torch
-import numpy as np
+from scipy.stats import norm
 
 class AaronsonWatermarker:
-    def __init__(self, hash_key=7, hashing_schema="prev"):
+    def __init__(self, 
+                 hash_key=7, 
+                 hashing_schema="prev", 
+                 vocab_size = -1, 
+                 tokenizer = None):
         self.hash_key = hash_key
         self.hashing_schema = hashing_schema
+        self.vocab_size = vocab_size
+        self.tokenizer = tokenizer
 
     def sample(self, probs, tokens):
         # Generate random seed based on the previous token and hash_key
@@ -26,5 +32,36 @@ class AaronsonWatermarker:
         
         return next_tokens
 
-    def detection(self, tokens):
-        pass  # To be implemented
+    def detect(self, answer_str):
+        tokens = self.tokenizer.encode(answer_str, bos = False, eos = True)
+        print ("tokens:", tokens)
+        #tokens: List[int]
+        if self.hashing_schema == "prev": 
+            prev_tokens = tokens[:-1]  # Exclude the last token
+            random_seeds = prev_tokens * self.hash_key
+            print (len(random_seeds))
+
+        T = len(tokens) - 1  # Exclude the first token as per the requirement
+        S_T = 0.0
+        print ("T:", T)
+
+        rti_list = []
+        for t, seed in enumerate(random_seeds):
+            if t == T:
+                break
+            torch.manual_seed(seed)
+            r = torch.rand(self.vocab_size)
+            r_ti = r[tokens[t+1]]  # Assuming a single token, so directly using r
+            print ("t:", t, "rti:", r_ti)
+            rti_list.append(r_ti)
+            S_T += torch.log(1 / (1 - r_ti))
+
+        print ("rti:", rti_list)
+        # Calculate the Z statistic
+        Z = ((S_T / T) - 1) * T
+
+        # Calculate the p-value
+        p_value = (1 - norm.cdf(Z.item()))
+
+        return p_value, S_T, Z
+

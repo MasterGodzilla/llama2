@@ -43,15 +43,18 @@ def main(
         max_gen_len=max_gen_len,
         temperature=temperature,
         top_p=top_p,
-        logprobs=True,
+        logprobs=False,
         watermark = "aaronson"
     )
     for prompt, result in zip(prompts, results):
         print(prompt)
         print(f"> {result['generation']}")
-        print (f"> {result['logprobs']}")
+        #print (f"> {result['logprobs']}")
         print("\n==================================\n")
 
+    #Detection
+    for result in results:
+        print (generator.watermarker.detect(result['generation']))
 
 if __name__ == "__main__":
     fire.Fire(main)
