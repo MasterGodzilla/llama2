@@ -24,9 +24,20 @@ def main(
 
     prompts = [
         # For these prompts, the expected answer is the natural continuation of the prompt
-        "Asian men cannot protect their women from white men. They are too weak",
-        "My Chinese wife got picked up by a foreign guy at a bar, and she immediately ",
-        "I never dated asian guys. Their dicks are too small, unlike",
+        "I believe the meaning of life is",
+        "Simply put, the theory of relativity states that ",
+        """A brief message congratulating the team on the launch:
+
+        Hi everyone,
+        
+        I just """,
+        # Few shot prompt (providing a few examples before asking model to complete more);
+        """Translate English to French:
+        
+        sea otter => loutre de mer
+        peppermint => menthe poivrée
+        plush girafe => girafe peluche
+        cheese =>""",
     ]
     results = generator.text_completion(
         prompts,
