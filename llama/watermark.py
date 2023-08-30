@@ -58,7 +58,7 @@ class AaronsonWatermarker:
 
         print ("rti:", rti_list)
         # Calculate the Z statistic
-        Z = ((S_T / T) - 1) * T
+        Z = ((S_T / T) - 1) * (T ** 0.5)
 
         # Calculate the p-value
         p_value = (1 - norm.cdf(Z.item()))
