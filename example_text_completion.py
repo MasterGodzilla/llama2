@@ -57,7 +57,7 @@ def main(
     if watermark: 
         for result in results:
             test = generator.watermarker.detect(result['generation'])
-            print ("p-value:",test[0], "ST:", test[1], "Z-score", test[2])
+            print ("p-value:",test[0], "ST (null is 1):", test[1], "Z-score", test[2])
 
 if __name__ == "__main__":
     fire.Fire(main)
