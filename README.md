@@ -7,7 +7,8 @@ torchrun --nproc_per_node 1 example_text_completion.py \
     --tokenizer_path tokenizer.model \
     --max_seq_len 128 --max_batch_size 4 \
     --temperature 0.6 \
-    --watermark aaronson
+    --watermark aaronson \
+    --hashing_schema lefthash
 ```
 
 # Llama 2
