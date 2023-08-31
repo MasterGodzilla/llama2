@@ -58,5 +58,5 @@ class AaronsonWatermarker:
         # Calculate the p-value
         p_value = (1 - norm.cdf(Z.item()))
 
-        return p_value, S_T, Z
+        return p_value, S_T/T, Z
 
