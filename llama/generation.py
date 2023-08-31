@@ -59,7 +59,8 @@ class Llama:
         max_seq_len: int,
         max_batch_size: int,
         model_parallel_size: Optional[int] = None,
-        watermark = "aaronson",
+        watermark: str = None,
+        hashing_schema: str = None,
     ) -> "Llama":
         if not torch.distributed.is_initialized():
             torch.distributed.init_process_group("nccl")
@@ -104,17 +105,23 @@ class Llama:
         if watermark == "aaronson":
             watermarker = AaronsonWatermarker(
                 vocab_size = model_args.vocab_size,
-                tokenizer = tokenizer
+                tokenizer = tokenizer,
+                hashing_schema = hashing_schema,
             )
         else:
             watermarker = None
 
-        return Llama(model, tokenizer, watermarker)
+        return Llama(model, tokenizer, watermarker, watermark)
 
-    def __init__(self, model: Transformer, tokenizer: Tokenizer, watermarker = None):
+    def __init__(self, 
+                 model: Transformer, 
+                 tokenizer: Tokenizer, 
+                 watermarker = None,
+                 watermark: str = None ):
         self.model = model
         self.tokenizer = tokenizer
         self.watermarker = watermarker
+        self.watermark = watermark
 
     @torch.inference_mode()
     def generate(
@@ -125,7 +132,6 @@ class Llama:
         top_p: float = 0.9,
         logprobs: bool = False,
         echo: bool = False,
-        watermark = None #None, aaronson, kirchenbaurer, cosine
     ) -> Tuple[List[List[int]], Optional[List[List[float]]]]:
         params = self.model.params
         bsz = len(prompt_tokens)
@@ -151,7 +157,7 @@ class Llama:
             
             if temperature > 0:
                 probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
-                if watermark == "aaronson": 
+                if self.watermark == "aaronson": 
                     #print ("using aaronson watermark")
                     next_token = self.watermarker.sample(probs, tokens, cur_pos)
                 else:
@@ -208,7 +214,6 @@ class Llama:
         max_gen_len: Optional[int] = None,
         logprobs: bool = False,
         echo: bool = False,
-        watermark = None #None, aaronson, kirchenbaurer, cosine
     ) -> List[CompletionPrediction]:
         if max_gen_len is None:
             max_gen_len = self.model.params.max_seq_len - 1
@@ -220,7 +225,6 @@ class Llama:
             top_p=top_p,
             logprobs=logprobs,
             echo=echo,
-            watermark = watermark
         )
         if logprobs:
             return [

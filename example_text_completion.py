@@ -9,7 +9,8 @@ from llama import Llama
 def main(
     ckpt_dir: str,
     tokenizer_path: str,
-    watermark: str,
+    watermark: str = "aaronson",
+    hashing_schema: str = "lefthash",
     temperature: float = 0.6, #default was 0.6
     top_p: float = 0.9,
     max_seq_len: int = 128,
@@ -21,7 +22,8 @@ def main(
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
-        watermark = watermark
+        watermark = watermark, 
+        hashing_schema = hashing_schema,
     )
 
     prompts = [
@@ -45,7 +47,6 @@ def main(
         temperature=temperature,
         top_p=top_p,
         logprobs=False,
-        watermark = watermark
     )
     for prompt, result in zip(prompts, results):
         print(prompt)

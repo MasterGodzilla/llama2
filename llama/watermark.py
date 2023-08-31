@@ -3,24 +3,33 @@ from scipy.stats import norm
 
 class AaronsonWatermarker:
     def __init__(self, 
-                 hash_key=7, 
-                 hashing_schema="prev", 
+                 hash_key = 2971215073, 
+                 mod_key = 15485863,
+                 hashing_schema = "lefthash", 
                  vocab_size = -1, 
-                 tokenizer = None):
+                 tokenizer = None,):
         self.hash_key = hash_key
+        self.mod_key = mod_key
         self.hashing_schema = hashing_schema
         self.vocab_size = vocab_size
         self.tokenizer = tokenizer
 
-    def sample(self, probs, tokens, cur_pos):
+    def sample(self, probs, tokens, cur_pos, k=4):
         # Generate random seed based on the previous token and hash_key
-        if self.hashing_schema == "prev": 
+        if self.hashing_schema == "lefthash": 
             prev_tokens = tokens[:,cur_pos-1]
             # Generate random seeds for each sequence in the batch
-            random_seeds = prev_tokens * self.hash_key
+            random_seeds = prev_tokens * self.hash_key % self.mod_key 
+        elif self.hashing_schema == "minhash":
+            prev_tokens = tokens[:, cur_pos - k:cur_pos]
+            #print ("prev_tokens",prev_tokens)
+            hashed_tokens = prev_tokens * self.hash_key % self.mod_key
+            #print ("hashed_tokens",hashed_tokens)
+            random_seeds, _ = torch.min(hashed_tokens,dim = 1)
+            #print ("t:",cur_pos, "random_seeds",random_seeds[0])
         
         # Initialize an array to store the next tokens for each sequence in the batch
-        next_tokens = torch.zeros(prev_tokens.shape, dtype=torch.long)
+        next_tokens = torch.zeros(tokens.shape[0], dtype=torch.long)
         
         for i, seed in enumerate(random_seeds):
             # Generate uniform random sample r for the i-th sequence
@@ -29,16 +38,24 @@ class AaronsonWatermarker:
 
             # Perform the Aaronson sampling for the i-th sequence
             next_tokens[i] = torch.argmax(torch.log(r) / probs[i])
+
         return next_tokens
 
-    def detect(self, answer_str, eps = 1e-8):
+    def detect(self, answer_str, eps = 1e-8, k=4):
         tokens = self.tokenizer.encode(answer_str, bos = False, eos = True)
         #tokens: List[int]
-        if self.hashing_schema == "prev": 
+        if self.hashing_schema == "lefthash": 
             prev_tokens = tokens[:-1]  # Exclude the last token
-            random_seeds = [prev_tokens[i]*self.hash_key for i in range(len(prev_tokens))]
-
-        T = len(tokens) - 1  # Exclude the first token as per the requirement
+            random_seeds = [prev_tokens[i]*self.hash_key% self.mod_key  for i in range(len(prev_tokens))]
+        elif self.hashing_schema == "minhash":
+            prev_tokens = tokens[:-1]
+            hashed_tokens = [prev_tokens[i]*self.hash_key% self.mod_key  for i in range(len(prev_tokens))]
+            random_seeds = [min(hashed_tokens[i:i+k]) for i in range(len(prev_tokens)-k+1)]
+            #print ("prev_tokens",prev_tokens)
+            #print ("hashed_tokens",hashed_tokens)
+            #print ("random_seeds",random_seeds)
+            
+        T = len(random_seeds)  # Exclude the first token as per the requirement
         S_T = 0.0
 
         rti_list = []
@@ -47,7 +64,11 @@ class AaronsonWatermarker:
                 break
             torch.manual_seed(seed)
             r = torch.rand(self.vocab_size, dtype = torch.float32)
-            r_ti = r[tokens[t+1]] - eps  # Assuming a single token, so directly using r
+            if self.hashing_schema == "lefthash": 
+                r_ti = r[tokens[t+1]] - eps
+            elif self.hashing_schema == "minhash": 
+                r_ti = r[tokens[t+k]] - eps
+                # print ("t+k:", t+k, "seed:", seed)
             rti_list.append(r_ti.item())
             S_T += torch.log(1 / (1 - r_ti))
 
@@ -58,5 +79,5 @@ class AaronsonWatermarker:
         # Calculate the p-value
         p_value = (1 - norm.cdf(Z.item()))
 
-        return p_value, S_T/T, Z
+        return p_value, S_T.item()/T, Z.item()
 
