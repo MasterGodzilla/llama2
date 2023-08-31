@@ -153,7 +153,7 @@ class Llama:
                 probs = torch.softmax(logits[:, -1] / temperature, dim=-1)
                 if watermark == "aaronson": 
                     #print ("using aaronson watermark")
-                    next_token = self.watermarker.sample(probs, tokens)
+                    next_token = self.watermarker.sample(probs, tokens, cur_pos)
                 else:
                     next_token = sample_top_p(probs, top_p)
             else:
