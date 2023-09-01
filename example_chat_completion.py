@@ -16,12 +16,16 @@ def main(
     max_seq_len: int = 512,
     max_batch_size: int = 8,
     max_gen_len: Optional[int] = None,
+    watermark: str = None,
+    hashing_schema: str = None,
 ):
     generator = Llama.build(
         ckpt_dir=ckpt_dir,
         tokenizer_path=tokenizer_path,
         max_seq_len=max_seq_len,
         max_batch_size=max_batch_size,
+        watermark=watermark,
+        hashing_schema=hashing_schema,
     )
 
     dialogs = [
@@ -82,7 +86,13 @@ If a question does not make any sense, or is not factually coherent, explain why
         print(
             f"> {result['generation']['role'].capitalize()}: {result['generation']['content']}"
         )
+        
+        if watermark: 
+            test = generator.watermarker.detect(result['generation']['content'])
+            print ("p-value:",test[0], "ST (null is 1):", test[1], "Z-score", test[2])
+
         print("\n==================================\n")
+            
 
 
 if __name__ == "__main__":
