@@ -1,4 +1,5 @@
 import torch
+import numpy as np
 from scipy.stats import norm
 
 class AaronsonWatermarker:
@@ -33,11 +34,21 @@ class AaronsonWatermarker:
         
         for i, seed in enumerate(random_seeds):
             # Generate uniform random sample r for the i-th sequence
-            torch.manual_seed(seed.item())
-            r = torch.rand_like(probs[i],dtype = torch.float32)
+            #torch.manual_seed(seed.item())
+            #print ("sample_seed",seed)
+            #r = torch.rand_like(probs[i],dtype = torch.float32)
+            #r = torch.rand(self.vocab_size, dtype = torch.float32)
 
+            #try replace with numpy
+            np.random.seed(int(seed.item()))
+            # print("sample_seed", seed)
+            r_numpy = np.random.rand(self.vocab_size).astype(np.float32)
+            r = torch.from_numpy(r_numpy).cuda()
+            
             # Perform the Aaronson sampling for the i-th sequence
             next_tokens[i] = torch.argmax(torch.log(r) / probs[i])
+
+            # print ("token", next_tokens[i], "rti:", r[next_tokens[i]],"rt0", r[0])
 
         return next_tokens
 
@@ -62,10 +73,19 @@ class AaronsonWatermarker:
         for t, seed in enumerate(random_seeds):
             if t == T:
                 break
-            torch.manual_seed(seed)
-            r = torch.rand(self.vocab_size, dtype = torch.float32)
+            #torch.manual_seed(seed)
+            #print ("detect seed",seed)
+            #r = torch.rand(self.vocab_size, dtype = torch.float32) #too low precision cause inf
+            
+            #try replacing with numpy.rand
+            np.random.seed(int(seed))
+            #print("detect seed", seed)
+            r_numpy = np.random.rand(self.vocab_size).astype(np.float32)
+            r = torch.from_numpy(r_numpy).cuda()
+            
             if self.hashing_schema == "lefthash": 
                 r_ti = r[tokens[t+1]] - eps
+                # print ("token", tokens[t+1],"rti", r_ti, "rt0", r[0])
             elif self.hashing_schema == "minhash": 
                 r_ti = r[tokens[t+k]] - eps
                 # print ("t+k:", t+k, "seed:", seed)
