@@ -5,6 +5,9 @@ from typing import Optional
 
 import fire
 import json
+   
+
+from tqdm import tqdm
 
 from llama import Llama
 
@@ -34,31 +37,9 @@ def main(
     output_list = []
     
     
-    dialogs=all_dialogs[:10]
-    
-    # results = generator.chat_completion(
-    #     dialogs,  # type: ignore
-    #     max_gen_len=max_gen_len,
-    #     temperature=temperature,
-    #     top_p=top_p,
-    # )
+    dialogs=all_dialogs[5000:20000]
 
-    # for dialog, result in zip(dialogs, results):
-    #     output_dict = {
-    #         "prompt": dialog,
-    #         "result": result,
-    #         'wm': watermark,
-    #     }
-    #     output_list.append(output_dict)
-    #     for msg in dialog:
-    #         print(f"{msg['role'].capitalize()}: {msg['content']}\n")
-    #     print(
-    #         f"> {result['generation']['role'].capitalize()}: {result['generation']['content']}"
-    #     )
-    #     print("\n==================================\n")
-        
-    # 假设你已经定义了 dialogs 和 generator，并设置了相关参数
-
+     
     batch_size = max_batch_size  # 批处理大小
 
     # 将所有对话分成批次
@@ -68,7 +49,7 @@ def main(
 
     output_list = []  # 用于存储输出的列表
 
-    for batch_idx in range(num_batches):
+    for batch_idx in tqdm(range(num_batches), desc="Processing batches"):
         start_idx = batch_idx * batch_size
         end_idx = min((batch_idx + 1) * batch_size, len(dialogs))
         batch_dialogs = dialogs[start_idx:end_idx]
@@ -94,14 +75,9 @@ def main(
             )
             print("\n==================================\n")
 
-    # 将 output_list 存储为 JSON 文件（如果需要）
-    # ...
-                    
         
         
-        
-        
-    output_file_path = f"chat_output_{watermark}.json"
+    output_file_path = f"chat_output_{watermark}_5k-20k.json"
     
     with open(output_file_path, "w") as output_file:
         json.dump(output_list, output_file,)

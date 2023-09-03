@@ -3,3 +3,6 @@ fairscale
 fire
 sentencepiece
 scipy
+pandas
+numpy
+tqdm
